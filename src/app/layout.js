@@ -9,12 +9,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <nav style={{ display: "flex", gap: "1.5rem", padding: "1rem 2rem", borderBottom: "1px solid #ddd" }}>
-          <a href="/">Dashboard</a>
-          <a href="/expenses">Expenses</a>
-          <a href="/expenses/new">Add Expense</a>
-          <a href="/categories">Categories</a>
-          <a href="/reports">Reports</a>
+        <nav className="flex flex-wrap gap-4 p-4 border-b border-gray-300">
+          <a href="/" className="whitespace-nowrap">Dashboard</a>
+          <a href="/expenses" className="whitespace-nowrap">Expenses</a>
+          <a href="/expenses/new" className="whitespace-nowrap">Add Expense</a>
+          <a href="/categories" className="whitespace-nowrap">Categories</a>
+          <a href="/reports" className="whitespace-nowrap">Reports</a>
         </nav>
         {children}
       </body>
