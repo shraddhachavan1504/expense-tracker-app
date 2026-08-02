@@ -13,7 +13,14 @@ export default async function HealthPage() {
     <main style={{ padding: "2rem" }}>
       <h1>Health Check</h1>
       <p>Status: OK</p>
-      <pre style={{ background: "#f4f4f4", padding: "1rem", borderRadius: "4px" }}>
+      <pre
+        style={{
+          background: "#f4f4f4",
+          color: "#111111",
+          padding: "1rem",
+          borderRadius: "4px",
+        }}
+      >
         {JSON.stringify(data, null, 2)}
       </pre>
     </main>
