@@ -10,7 +10,7 @@
 // Anthropic model to use. Sonnet is the right default for a chat
 // feature like this: fast enough to stream comfortably, smart enough
 // to do real arithmetic reasoning over the expense summary.
-export const MODEL = "llama-3.1-8b-instant";
+export const MODEL = "openai/gpt-oss-20b";
 
 // Keep responses tight. A spending-insights answer should read like
 // a sentence or two plus maybe a short list — not a report. Capping
