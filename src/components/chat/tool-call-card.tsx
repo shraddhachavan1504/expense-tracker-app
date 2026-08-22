@@ -2,42 +2,55 @@
  * components/chat/tool-call-card.tsx
  *
  * Renders the getCategoryBreakdown tool's lifecycle as four visually
- * distinct states, per FE-07's brief:
- *   - input-streaming : the model is deciding what to call this with
- *   - input-available  : the call is about to run, input is final
- *   - output-available : real result -> rendered as a table
- *   - output-error      : a designed failure state, not a crash
+ * distinct states, per FE-07's brief.
+ *
+ * Note: the AI SDK types tool part input/output as `unknown` at this
+ * generic level (it doesn't know our specific tool's shape). We cast
+ * to the known shape right where we read it, rather than loosening
+ * the whole component's typing.
  */
 
 import type { UIMessage } from "ai";
 
 type MessagePart = UIMessage["parts"][number];
 
+type CategoryBreakdownInput = { category?: string };
+
+type CategoryBreakdownOutput = {
+  category: string;
+  totalSpent: number;
+  transactionCount: number;
+  transactions: { date: string; description: string; amount: number }[];
+};
+
 export function ToolCallCard({ part }: { part: MessagePart }) {
   if (!("state" in part)) return null;
 
   switch (part.state) {
-    case "input-streaming":
+    case "input-streaming": {
       return (
         <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-400">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#1E3AF2]" />
           Deciding what to look up…
         </div>
       );
+    }
 
-    case "input-available":
+    case "input-available": {
+      const input = part.input as CategoryBreakdownInput | undefined;
       return (
         <div className="flex items-center gap-2 rounded-xl border border-[#1E3AF2]/40 bg-[#1E3AF2]/10 px-4 py-3 text-sm text-[#F7F6F2]">
           <span className="h-2 w-2 rounded-full bg-[#1E3AF2] animate-bounce" />
           Looking up{" "}
           <span className="font-semibold">
-            {part.input?.category ? part.input.category : "all categories"}
+            {input?.category ? input.category : "all categories"}
           </span>
           …
         </div>
       );
+    }
 
-    case "output-error":
+    case "output-error": {
       return (
         <div className="rounded-xl border border-red-500/40 bg-red-950/30 px-4 py-3 text-sm text-red-300">
           <p className="font-semibold">Couldn't complete that lookup</p>
@@ -46,17 +59,20 @@ export function ToolCallCard({ part }: { part: MessagePart }) {
           </p>
         </div>
       );
+    }
 
-    case "output-available":
+    case "output-available": {
       if (!part.output) return null;
-      return <CategoryBreakdownTable result={part.output} />;
+      const output = part.output as CategoryBreakdownOutput;
+      return <CategoryBreakdownTable result={output} />;
+    }
 
     default:
       return null;
   }
 }
 
-function CategoryBreakdownTable({ result }: { result: any }) {
+function CategoryBreakdownTable({ result }: { result: CategoryBreakdownOutput }) {
   const { category, totalSpent, transactionCount, transactions } = result;
 
   if (transactionCount === 0) {
@@ -85,7 +101,7 @@ function CategoryBreakdownTable({ result }: { result: any }) {
           </tr>
         </thead>
         <tbody>
-          {transactions.map((t: any, i: number) => (
+          {transactions.map((t, i) => (
             <tr key={i} className="border-b border-neutral-900 last:border-0">
               <td className="px-4 py-2 text-neutral-400">{t.date}</td>
               <td className="px-4 py-2 text-[#F7F6F2]">{t.description}</td>
