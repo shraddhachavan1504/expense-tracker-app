@@ -1,16 +1,18 @@
-/**
+﻿/**
  * components/chat/message-bubble.tsx
  *
- * Renders one message's typed parts. Uses react-markdown instead of
- * dangerouslySetInnerHTML on the raw string — react-markdown re-parses
- * the full text on every render, so a half-open code fence or a
- * dangling ** just renders as plain text until it closes, instead of
- * breaking the layout. That's the "buffer or use a streaming-aware
- * renderer" mentor tip, satisfied by the library choice.
+ * FE-06's message bubble, extended for FE-07: text parts still render
+ * through react-markdown; any part whose type starts with "tool-"
+ * (e.g. "tool-getCategoryBreakdown") gets handed to ToolCallCard,
+ * which renders the lifecycle state as a real component instead of
+ * a JSON dump.
  */
 
 import ReactMarkdown from "react-markdown";
 import type { UIMessage } from "ai";
+import { ToolCallCard } from "./tool-call-card";
+
+type MessagePart = UIMessage["parts"][number];
 
 export function MessageBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
@@ -18,7 +20,7 @@ export function MessageBubble({ message }: { message: UIMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed space-y-2 ${
           isUser
             ? "bg-[#1E3AF2] text-[#F7F6F2]"
             : "bg-neutral-900 text-[#F7F6F2] border border-neutral-800"
@@ -32,9 +34,11 @@ export function MessageBubble({ message }: { message: UIMessage }) {
               </div>
             );
           }
-          // Other part types (reasoning, tool calls, etc.) are ignored
-          // here since this feature doesn't use tools — extend this
-          // switch if FE-07 adds them.
+
+          if (part.type.startsWith("tool-")) {
+            return <ToolCallCard key={i} part={part} />;
+          }
+
           return null;
         })}
       </div>

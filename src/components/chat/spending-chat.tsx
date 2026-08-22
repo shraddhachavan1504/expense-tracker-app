@@ -52,10 +52,10 @@ export function SpendingChat({ expenses }: SpendingChatProps) {
     const trimmed = input.trim();
     if (!trimmed || isBusy) return;
 
-    sendMessage(
-      { text: trimmed },
-      { body: { expenseSummary: summarizeExpenses(expenses) } }
-    );
+   sendMessage(
+  { text: trimmed },
+  { body: { expenseSummary: summarizeExpenses(expenses), expenses } }
+);
     setInput("");
     // Re-focus so mobile keyboards don't dismiss between sends.
     inputRef.current?.focus();
