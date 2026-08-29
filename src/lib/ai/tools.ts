@@ -8,6 +8,16 @@
  * category: "Transport"; "give me a full breakdown" triggers it with
  * no category filter.
  *
+ * FE-08 update: added a `found` flag so the UI can distinguish
+ * "zero matching transactions" from a normal result, instead of
+ * silently rendering an empty table/chart.
+ *
+ * FE-08 fix: category display now uses `||` instead of `??` when
+ * falling back to "All Categories" — the model sometimes calls the
+ * tool with category: "" (empty string) rather than omitting the
+ * field, and `??` only falls back on null/undefined, not "". `||`
+ * falls back on any falsy value, including "".
+ *
  * Keep this file's job narrow: schema + execute, nothing about
  * rendering. The UI side lives in components/chat/tool-call-card.tsx.
  */
@@ -27,10 +37,12 @@ const getCategoryBreakdownSchema = z.object({
 });
 
 export type CategoryBreakdownResult = {
+  found: boolean;
   category: string;
   totalSpent: number;
   transactionCount: number;
   transactions: { date: string; description: string; amount: number }[];
+  message?: string;
 };
 
 export function createGetCategoryBreakdownTool(expenses: Expense[]) {
@@ -45,10 +57,28 @@ export function createGetCategoryBreakdownTool(expenses: Expense[]) {
         ? expenses.filter((e) => e.category.toLowerCase() === category.toLowerCase())
         : expenses;
 
+      // FE-08 edge case: category filter matched nothing (e.g. user
+      // asked about "Travel" but every expense is tagged "Transport").
+      // Return a distinct shape instead of a zeroed-out result that
+      // looks like a real (but boring) answer.
+      if (filtered.length === 0) {
+        return {
+          found: false,
+          category: category || "All Categories",
+          totalSpent: 0,
+          transactionCount: 0,
+          transactions: [],
+          message: category
+            ? `No expenses found in the "${category}" category.`
+            : "No expenses recorded yet.",
+        };
+      }
+
       const totalSpent = filtered.reduce((sum, e) => sum + e.amount, 0);
 
       return {
-        category: category ?? "All Categories",
+        found: true,
+        category: category || "All Categories",
         totalSpent,
         transactionCount: filtered.length,
         transactions: filtered

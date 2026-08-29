@@ -9,6 +9,12 @@
  * Props: pass your app's live expense list in; this component
  * computes the summary and re-sends it with every message, so the
  * assistant always reasons over current data.
+ *
+ * FE-08 update: added error state handling. useChat's status can be
+ * 'error' (network failure, mid-stream failure, rate limit, etc.) —
+ * previously nothing checked for this, so failures happened silently
+ * with no feedback to the user. `regenerate()` retries only the last
+ * message, not the whole conversation.
  */
 
 import { useState, useRef } from "react";
@@ -24,9 +30,10 @@ interface SpendingChatProps {
 
 export function SpendingChat({ expenses }: SpendingChatProps) {
   const [input, setInput] = useState("");
+  const [retrying, setRetrying] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
@@ -46,6 +53,18 @@ export function SpendingChat({ expenses }: SpendingChatProps) {
     (status === "streaming" &&
       messages[messages.length - 1]?.role === "assistant" &&
       !messages[messages.length - 1]?.parts.some((p) => p.type === "text" && p.text.length > 0));
+
+ async function handleRetry() {
+  if (retrying) return;
+  setRetrying(true);
+  try {
+    await regenerate({
+      body: { expenseSummary: summarizeExpenses(expenses), expenses },
+    });
+  } finally {
+    setRetrying(false);
+  }
+}
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,6 +102,27 @@ export function SpendingChat({ expenses }: SpendingChatProps) {
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce [animation-delay:-0.3s]" />
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce [animation-delay:-0.15s]" />
             <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce" />
+          </div>
+        )}
+
+        {/* FE-08: designed error state, replaces silent failure.
+            Shown when status === 'error' — network failure, mid-stream
+            drop, rate limit, or any other request failure. */}
+        {status === "error" && (
+          <div className="flex flex-col gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-4 py-3 w-fit max-w-[80%]">
+            <p className="text-sm text-red-300">
+              {error?.message?.includes("429")
+                ? "You're sending messages too fast — wait a moment and try again."
+                : "That message didn't go through."}
+            </p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="self-start rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-[#F7F6F2] hover:bg-red-700 disabled:opacity-50"
+            >
+              {retrying ? "Retrying…" : "Retry last message"}
+            </button>
           </div>
         )}
       </div>
