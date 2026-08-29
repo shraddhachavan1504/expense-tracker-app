@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Buttons with a Brain — Motion &amp; State Micro-interactions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cobalt: #1E3AF2;
+    --cobalt-hover: #3350FF;
+    --ink: #121212;
+    --paper: #F7F6F2;
+    --signal: #FFD400;
+    --error: #FF5C7A; /* the one deliberate exception to the 4-color system — see note below */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-fast: 160ms;
+    --dur-med: 260ms;
+    --dur-slow: 420ms;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+  }
+
+  .page {
+    max-width: 640px;
+    width: 100%;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 5vw, 40px);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  h1 span { color: var(--signal); }
+
+  .subtitle {
+    font-size: 15px;
+    color: #A9A9A4;
+    margin: 0 0 40px;
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+
+  .demo-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .status-line {
+    font-size: 13px;
+    color: #A9A9A4;
+    min-height: 18px;
+    margin-bottom: 40px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .status-line strong { color: var(--paper); font-weight: 600; }
+
+  /* ---------- The button component ---------- */
+
+  .btn {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 210px;
+    height: 52px;
+    border-radius: 8px;
+    border: none;
+    background: var(--cobalt);
+    cursor: pointer;
+    isolation: isolate;
+    transform: translateY(0) scale(1);
+    transition:
+      background-color var(--dur-fast) var(--ease-standard),
+      transform var(--dur-fast) var(--ease-standard),
+      box-shadow var(--dur-fast) var(--ease-standard);
+    box-shadow: 0 0 0 0 rgba(30, 58, 242, 0);
+  }
+
+  .btn:hover {
+    background: var(--cobalt-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(30, 58, 242, 0.35);
+  }
+
+  .btn:active {
+    transform: translateY(0) scale(0.97);
+    transition-duration: 80ms;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+  }
+
+  .btn:disabled,
+  .btn[aria-busy="true"] {
+    cursor: default;
+  }
+
+  .btn.is-disabled {
+    background: #2A2A2A;
+    color: #6B6B68;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* every visual state lives in the same grid cell and crossfades —
+     this is what keeps the button's box a fixed 210x52 with zero layout thrash */
+  .btn .layer {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+    transition: opacity var(--dur-med) var(--ease-standard),
+                transform var(--dur-med) var(--ease-standard);
+    pointer-events: none;
+  }
+
+  .btn .layer.is-active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .btn .label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--paper);
+    letter-spacing: 0.01em;
+  }
+
+  /* spinner: a rotating ring, animated purely via transform (compositor-only) */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(247, 246, 242, 0.25);
+    border-top-color: var(--paper);
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* checkmark: drawn with a dash-offset transition, triggered on enter */
+  .checkmark {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .checkmark path {
+    fill: none;
+    stroke: var(--signal);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    transition: stroke-dashoffset var(--dur-slow) var(--ease-out-back);
+  }
+  .layer.is-active .checkmark path {
+    stroke-dashoffset: 0;
+  }
+
+  .error-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .error-icon path {
+    fill: none;
+    stroke: var(--error);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+  }
+
+  /* state-specific button chrome */
+  .btn[data-state="success"] { background: #16B36B; }
+  .btn[data-state="success"]:hover { background: #16B36B; transform: translateY(0); }
+  .btn[data-state="error"] { background: #2A1418; box-shadow: inset 0 0 0 1.5px var(--error); }
+  .btn[data-state="error"]:hover { background: #331519; transform: translateY(0); }
+  .btn[data-state="loading"] { cursor: default; }
+  .btn[data-state="loading"]:hover { transform: translateY(0); box-shadow: none; }
+
+  /* shake, on error entry only — skipped entirely under reduced motion */
+  .btn.is-shaking { animation: shake 380ms var(--ease-standard); }
+  @keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .btn .layer, .checkmark path {
+      transition-duration: 1ms !important;
+    }
+    .btn:hover { transform: none; }
+    .btn.is-shaking { animation: none; }
+    .spinner { animation-duration: 0.9s; } /* keep it, just don't accelerate it — motion, not decoration, still needs to signal "working" */
+  }
+
+  .notes {
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid #2A2A2A;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: #B8B8B4;
+  }
+  .notes h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    color: var(--paper);
+    margin: 0 0 12px;
+  }
+  .notes code {
+    background: #1D1D1D;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1>Buttons with a <span>brain</span>.</h1>
+  <p class="subtitle">Two buttons, one motion system, built for the expense tracker capstone. Click each to trigger a fake async call — 20% of attempts fail on purpose.</p>
+
+  <div class="demo-row">
+    <button class="btn" id="save-btn" data-state="idle">
+      <span class="layer is-active" data-for="idle,error">
+        <span class="label" id="save-label">Save Expense</span>
+      </span>
+      <span class="layer" data-for="loading">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="label">Saving…</span>
+      </span>
+      <span class="layer" data-for="success">
+        <svg class="checkmark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5L9.5 18L20 6"/></svg>
+        <span class="label">Saved</span>
+      </span>
+    </button>
+
+    <button class="btn" id="insight-btn" data-state="idle">
+      <span class="layer is-active" data-for="idle,error">
+        <span class="label" id="insight-label">Generate Insights</span>
+      </span>
+      <span class="layer" data-for="loading">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="label">Thinking…</span>
+      </span>
+      <span class="layer" data-for="success">
+        <svg class="checkmark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5L9.5 18L20 6"/></svg>
+        <span class="label">Ready</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="status-line" id="status" role="status" aria-live="polite"></div>
+
+  <div class="notes">
+    <h2>Duration &amp; easing notes</h2>
+    <p>
+      Hover and press use <code>160ms</code> with a standard ease — fast enough that the button feels
+      immediately responsive to the cursor, never floaty. State-to-state crossfades (idle → loading →
+      success/error) run at <code>260ms</code>: slow enough to read as intentional, fast enough not to
+      make the user wait on the animation itself. The checkmark draw-on is the one slow beat, <code>420ms</code>
+      with an <code>ease-out-back</code> curve, because a success state is the one moment worth a tiny
+      flourish — everything else stays purely functional. The button's box (210×52) never changes size;
+      every state lives in the same CSS grid cell and crossfades via <code>opacity</code> and
+      <code>transform</code> only, so nothing else on the page ever reflows. Error introduces a single
+      <code>380ms</code> shake (skipped under <code>prefers-reduced-motion</code>, where the button
+      relies on its color and icon change instead, never on shake alone). One deliberate exception to
+      the four-color system: an off-palette coral (<code>#FF5C7A</code>) marks the error state, because
+      reusing cobalt or signal yellow for "something went wrong" would work against how people already
+      read those colors elsewhere on the page.
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  /**
+   * A small state machine drives each button: idle → loading → success | error → idle.
+   * CSS transitions (not JS-driven animation loops) handle the actual motion, which is
+   * what makes this interruptible for free — a transition always interpolates from
+   * whatever the current computed value is, so spam-clicking never leaves it stuck
+   * mid-frame or fighting itself.
+   */
+  function createMotionButton(buttonEl, statusEl, { busyLabel }) {
+    let state = 'idle';
+    let resetTimer = null;
+
+    function setState(next) {
+      state = next;
+      buttonEl.dataset.state = next;
+      buttonEl.setAttribute('aria-busy', String(next === 'loading'));
+
+      buttonEl.querySelectorAll('.layer').forEach((layer) => {
+        const forStates = layer.dataset.for.split(',');
+        layer.classList.toggle('is-active', forStates.includes(next));
+      });
+
+      const messages = {
+        idle: '',
+        loading: busyLabel,
+        success: 'Done.',
+        error: 'That failed — click to retry.',
+      };
+      statusEl.textContent = messages[next];
+    }
+
+    function runFakeRequest() {
+      const delay = 800 + Math.random() * 700; // 800–1500ms
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          Math.random() < 0.2 ? reject(new Error('simulated failure')) : resolve();
+        }, delay);
+      });
+    }
+
+    function handleClick() {
+      // Ignore clicks while a request is in flight or right after success —
+      // this is what makes "spam-clicking" safe rather than something to prevent with a lock.
+      if (state === 'loading' || state === 'success') return;
+
+      clearTimeout(resetTimer);
+      setState('loading');
+
+      runFakeRequest()
+        .then(() => {
+          setState('success');
+          resetTimer = setTimeout(() => setState('idle'), 1800);
+        })
+        .catch(() => {
+          setState('error');
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            buttonEl.classList.remove('is-shaking');
+            void buttonEl.offsetWidth; // restart the animation on repeat errors
+            buttonEl.classList.add('is-shaking');
+          }
+        });
+    }
+
+    buttonEl.addEventListener('click', handleClick);
+    setState('idle');
+  }
+
+  createMotionButton(document.getElementById('save-btn'), document.getElementById('status'), {
+    busyLabel: 'Saving expense…',
+  });
+  createMotionButton(document.getElementById('insight-btn'), document.getElementById('status'), {
+    busyLabel: 'Analyzing your spending…',
+  });
+})();
+</script>
+
+</body>
+</html>
