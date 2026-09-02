@@ -98,18 +98,24 @@ export function SpendingChat({ expenses }: SpendingChatProps) {
             position an assistant message would appear, so the handoff
             to the first token is a swap in place, not a layout jump. */}
         {showThinkingIndicator && (
-          <div className="flex items-center gap-1.5 rounded-2xl bg-neutral-900 px-4 py-3 w-fit">
-            <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce [animation-delay:-0.3s]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce [animation-delay:-0.15s]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce" />
-          </div>
-        )}
+  <div
+    role="status"
+    aria-label="Assistant is thinking"
+    className="flex items-center gap-1.5 rounded-2xl bg-neutral-900 px-4 py-3 w-fit"
+  >
+    <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce [animation-delay:-0.3s]" />
+    <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce [animation-delay:-0.15s]" />
+    <span className="h-1.5 w-1.5 rounded-full bg-neutral-500 animate-bounce" />
+  </div>
+)}
 
         {/* FE-08: designed error state, replaces silent failure.
             Shown when status === 'error' — network failure, mid-stream
             drop, rate limit, or any other request failure. */}
         {status === "error" && (
-          <div className="flex flex-col gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-4 py-3 w-fit max-w-[80%]">
+  <div
+    role="alert"
+    className="flex flex-col gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-4 py-3 w-fit max-w-[80%]">
             <p className="text-sm text-red-300">
               {error?.message?.includes("429")
                 ? "You're sending messages too fast — wait a moment and try again."
